@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Flashcards Widget</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --panel:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow:0 10px 30px rgba(17,24,39,.08);
+      --radius:18px;
+      --primary:#2563eb;     /* blue */
+      --primary2:#1d4ed8;
+      --good:#16a34a;
+      --bad:#dc2626;
+      --soft:#f3f4f6;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", Arial, "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      color:var(--text);
+      padding:14px;
+    }
+    .wrap{max-width:1050px;margin:0 auto}
+    .grid{
+      display:grid;
+      grid-template-columns: 1.35fr .65fr;
+      gap:14px;
+    }
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+
+    .panel{
+      border:1px solid var(--border);
+      background:var(--panel);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .hd{
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      background: linear-gradient(180deg, #ffffff, #fbfbfe);
+    }
+    .hd .title{
+      display:flex; flex-direction:column; gap:2px;
+      min-width: 180px;
+    }
+    .hd .title .h{font-weight:750; font-size:13.5px}
+    .hd .title .d{color:var(--muted); font-size:12px}
+    .tabs{display:flex; gap:8px; flex-wrap:wrap}
+    .spacer{flex:1}
+
+    button, input, textarea, select{font:inherit}
+    .btn{
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--text);
+      padding:9px 11px;
+      border-radius:12px;
+      cursor:pointer;
+      transition:.12s transform ease, .12s background ease, .12s border-color ease;
+      font-size:12.5px;
+      user-select:none;
+    }
+    .btn:hover{transform:translateY(-1px); background:#fbfbff}
+    .btn:active{transform:translateY(0px)}
+    .btn.sm{padding:7px 9px; border-radius:10px; font-size:12px}
+    .btn.primary{
+      background: rgba(37,99,235,.10);
+      border-color: rgba(37,99,235,.25);
+      color: var(--primary2);
+      font-weight:700;
+    }
+    .btn.primary:hover{background: rgba(37,99,235,.14)}
+    .btn.good{
+      background: rgba(22,163,74,.10);
+      border-color: rgba(22,163,74,.22);
+      color: var(--good);
+      font-weight:700;
+    }
+    .btn.danger{
+      background: rgba(220,38,38,.08);
+      border-color: rgba(220,38,38,.20);
+      color: var(--bad);
+      font-weight:700;
+    }
+    .btn.active{
+      background: var(--soft);
+      border-color: #d1d5db;
+      font-weight:750;
+    }
+
+    .bd{padding:14px}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .small{color:var(--muted); font-size:12px}
+
+    /* Card */
+    .cardwrap{display:flex; flex-direction:column; gap:10px}
+    .progress{
+      height:10px;
+      border-radius:999px;
+      overflow:hidden;
+      background: #eef2ff;
+      border:1px solid #e0e7ff;
+    }
+    .progress > div{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(37,99,235,.85), rgba(29,78,216,.85));
+      transition: width .18s ease;
+    }
+
+    .card{
+      height:280px;
+      border-radius:22px;
+      border:1px solid var(--border);
+      background: #fff;
+      box-shadow: 0 14px 40px rgba(17,24,39,.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:22px;
+      position:relative;
+      cursor:pointer;
+      user-select:none;
+    }
+    .card .content{
+      text-align:center;
+      max-width: 92%;
+      line-height:1.35;
+      word-break:keep-all;
+      white-space:pre-wrap;
+    }
+    .front{
+      font-size:34px;
+      font-weight:850;
+      letter-spacing:.2px;
+    }
+
+    /* Back: meaning 크게, etc(예문) 작게 */
+    .back{
+      display:none;
+      font-size:18px;
+      font-weight:750;
+      color:#0f172a;
+    }
+    .back .meaning{
+      font-size:26px;
+      font-weight:900;
+      line-height:1.25;
+      white-space:pre-wrap;
+    }
+    .back .etc{
+      margin-top:14px;
+      font-size:14px;
+      font-weight:650;
+      color:var(--muted);
+      line-height:1.35;
+      white-space:pre-wrap;
+    }
+
+    .card.flipped .front{display:none}
+    .card.flipped .back{display:block}
+    .chip{
+      position:absolute;
+      top:12px;
+      left:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:11.5px;
+      color: var(--primary2);
+      background: rgba(37,99,235,.10);
+      border:1px solid rgba(37,99,235,.20);
+      font-weight:750;
+    }
+    .hint{
+      position:absolute;
+      bottom:12px;
+      right:14px;
+      color:rgba(107,114,128,.85);
+      font-size:11.5px;
+      display:flex; gap:8px; align-items:center;
+    }
+    .kbd{
+      border:1px solid #e5e7eb;
+      background:#f9fafb;
+      padding:2px 7px;
+      border-radius:999px;
+      font-size:11px;
+      color:#374151;
+    }
+
+    /* Forms */
+    .form{display:flex; flex-direction:column; gap:10px}
+    .field{display:flex; flex-direction:column; gap:6px}
+    .field label{font-size:12px; color:var(--muted)}
+    .input, .textarea, .select{
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--text);
+      padding:10px 11px;
+      border-radius:12px;
+      outline:none;
+    }
+    .textarea{min-height:78px; resize:vertical}
+    .divider{height:1px; background:var(--border); margin:10px 0}
+
+    /* List */
+    .list{
+      display:flex; flex-direction:column; gap:8px;
+      max-height: 300px;
+      overflow:auto;
+      padding-right:6px;
+    }
+    .item{
+      display:flex; gap:10px; align-items:flex-start;
+      padding:10px 10px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:#fff;
+    }
+    .item .w{font-weight:850; min-width: 92px}
+    .item .m{color:var(--muted); font-size:12px; line-height:1.35; flex:1}
+    .item .x{margin-left:auto}
+
+    /* Test */
+    .quizq{font-size:16px;font-weight:850;margin:0 0 10px 0}
+    .choice{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 10px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:#fff;
+      cursor:pointer;
+      transition:.12s transform ease, .12s background ease, .12s border-color ease;
+      user-select:none;
+    }
+    .choice:hover{transform:translateY(-1px); background:#fbfbff}
+    .choice.correct{background: rgba(22,163,74,.08); border-color: rgba(22,163,74,.22)}
+    .choice.wrong{background: rgba(220,38,38,.06); border-color: rgba(220,38,38,.20)}
+    .toast{
+      font-size:12px;
+      color:#0f172a;
+      background: #fff;
+      border:1px solid var(--border);
+      padding:9px 10px;
+      border-radius:14px;
+      display:none;
+      margin-top:10px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Game */
+    .gameGrid{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:10px;
+    }
+    @media (max-width: 980px){
+      .gameGrid{grid-template-columns: repeat(2, 1fr);}
+    }
+    .gcard{
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:#fff;
+      padding:12px;
+      min-height:70px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      font-weight:850;
+      cursor:pointer;
+      user-select:none;
+      transition:.12s transform ease, .12s background ease, .12s border-color ease;
+    }
+    .gcard:hover{transform:translateY(-1px); background:#fbfbff}
+    .gcard.sel{
+      border-color: rgba(37,99,235,.35);
+      background: rgba(37,99,235,.08);
+      color: var(--primary2);
+    }
+    .gcard.matched{
+      border-color: rgba(22,163,74,.22);
+      background: rgba(22,163,74,.08);
+      color: var(--good);
+      cursor:default;
+    }
+    .statRow{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:#fff;
+    }
+    .stat{
+      display:flex; flex-direction:column; gap:2px;
+      padding:6px 8px;
+      border-radius:12px;
+      background: var(--soft);
+      border:1px solid #e5e7eb;
+      min-width: 110px;
+    }
+    .stat .k{font-size:11.5px; color:var(--muted)}
+    .stat .v{font-weight:900; font-size:14px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="grid">
+    <!-- LEFT: Study -->
+    <div class="panel">
+      <div class="hd">
+        <div class="title">
+          <div class="h">학습</div>
+          <div class="d" id="statusText">—</div>
+        </div>
+
+        <div class="tabs">
+          <button class="btn sm active" id="tabFlash">카드</button>
+          <button class="btn sm" id="tabTest">테스트</button>
+          <button class="btn sm" id="tabGame">게임</button>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="row">
+          <button class="btn sm" id="btnShuffle">셔플</button>
+          <button class="btn sm" id="btnResetSession">리셋</button>
+        </div>
+      </div>
+
+      <div class="bd">
+        <!-- Flash Mode -->
+        <div id="viewFlash">
+          <div class="cardwrap">
+            <div class="progress" title="세션 진행률"><div id="progBar"></div></div>
+
+            <div class="row" style="justify-content:space-between">
+              <div class="small">세션 <b id="idxText">0</b>/<span id="totalText">0</span></div>
+              <div class="small">
+                표시:
+                <select class="select" id="studyMode" style="padding:8px 10px">
+                  <option value="all">전체</option>
+                  <option value="today">오늘 랜덤</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="card" id="card">
+              <div class="chip" id="chipTag">WORD</div>
+              <div class="content">
+                <div class="front" id="frontText">—</div>
+                <div class="back" id="backText">—</div>
+              </div>
+              <div class="hint">
+                <span class="kbd">Space</span> 뒤집기
+                <span class="kbd">←/→</span> 이동
+              </div>
+            </div>
+
+            <div class="row" style="justify-content:center">
+              <button class="btn" id="btnPrev">이전</button>
+              <button class="btn primary" id="btnFlip">뒤집기</button>
+              <button class="btn" id="btnNext">다음</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test Mode -->
+        <div id="viewTest" style="display:none">
+          <div class="row" style="justify-content:space-between; margin-bottom:10px">
+            <div class="small">문항:
+              <select class="select" id="testCount" style="padding:8px 10px">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+              </select>
+            </div>
+            <div class="small">출제:
+              <select class="select" id="testPool" style="padding:8px 10px">
+                <option value="all" selected>전체</option>
+                <option value="today">오늘 랜덤</option>
+              </select>
+            </div>
+            <button class="btn good" id="btnStartTest">시작</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div id="testArea" class="small">시작을 누르면 “단어 → 뜻(4지선다)”가 나와.</div>
+          <div class="toast" id="toast"></div>
+        </div>
+
+        <!-- Game Mode -->
+        <div id="viewGame" style="display:none">
+          <div class="row" style="justify-content:space-between; margin-bottom:10px">
+            <div class="small">
+              게임:
+              <select class="select" id="gameMode" style="padding:8px 10px">
+                <option value="match" selected>매칭(짝맞추기)</option>
+                <option value="time">타임어택(60초)</option>
+              </select>
+            </div>
+            <div class="small">
+              풀:
+              <select class="select" id="gamePool" style="padding:8px 10px">
+                <option value="all" selected>전체</option>
+                <option value="today">오늘 랜덤</option>
+              </select>
+            </div>
+            <button class="btn primary" id="btnStartGame">게임 시작</button>
+          </div>
+
+          <div class="statRow" style="margin-bottom:10px">
+            <div class="stat"><div class="k">점수</div><div class="v" id="gScore">0</div></div>
+            <div class="stat"><div class="k">콤보</div><div class="v" id="gCombo">0</div></div>
+            <div class="stat"><div class="k">남은 시간</div><div class="v" id="gTime">—</div></div>
+            <div class="stat"><div class="k">최고기록</div><div class="v" id="gBest">0</div></div>
+          </div>
+
+          <div id="gameArea" class="small">
+            “게임 시작”을 누르면 여기서 실행돼.
+          </div>
+
+          <div class="toast" id="gToast"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Manage -->
+    <div class="panel">
+      <div class="hd">
+        <div class="title">
+          <div class="h">관리</div>
+          <div class="d">단어 추가 · CSV · 오늘 랜덤 설정</div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn danger sm" id="btnClearAll">전체 삭제</button>
+      </div>
+
+      <div class="bd">
+        <div class="form">
+          <div class="field">
+            <label>오늘 랜덤 임계값 (0.10~0.35 추천)</label>
+            <div class="row">
+              <input class="input" type="number" step="0.01" min="0.01" max="0.9" id="threshold" value="0.20" style="width:120px">
+              <button class="btn sm" id="btnReRoll">랜덤 재생성</button>
+            </div>
+            <div class="small">임계값 0.20 → 대략 20%가 “오늘 랜덤”에 뜸</div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label>단어 추가</label>
+            <input class="input" id="inWord" placeholder="단어 (예: abandon)" />
+            <input class="input" id="inMeaning" placeholder="뜻 (예: 버리다, 포기하다)" />
+            <textarea class="textarea" id="inExample" placeholder="etc (선택)"></textarea>
+            <div class="row">
+              <button class="btn primary" id="btnAdd">추가</button>
+              <button class="btn sm" id="btnAddAndNext">추가 후 학습</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label>CSV 업로드 (word,meaning,example)</label>
+            <input class="input" type="file" id="csvFile" accept=".csv,text/csv" />
+            <div class="row">
+              <button class="btn sm" id="btnExport">CSV 내보내기</button>
+            </div>
+            <div class="small">
+              예시:
+              <div class="mono">word,meaning,example</div>
+              <div class="mono">abandon,"버리다, 포기하다","He abandoned the plan."</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label>단어 목록 (최근 60개)</label>
+            <div class="list" id="list"></div>
+          </div>
+
+          <div class="small">
+            저장: <span class="mono">localStorage</span> (같은 기기/브라우저 유지) · 다른 기기 이동은 CSV로
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const LS_KEY = "toeic_flashcards_v2_clean";
+  const LS_SET = "toeic_flashcards_settings_v2_clean";
+  const LS_BEST = "toeic_flashcards_best_v2_clean";
+
+  const $ = (id) => document.getElementById(id);
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+  const escapeCSV = (v) => {
+    const s = String(v ?? "");
+    if (/[,"\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  };
+  const escapeHtml = (s) =>
+    String(s ?? "").replace(/[&<>"']/g, (m) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+
+  function defaultCards(){
+    return [
+      {id: crypto.randomUUID(), word:"abandon", meaning:"버리다, 포기하다", example:"He abandoned the plan.", r:Math.random(), createdAt:Date.now()},
+      {id: crypto.randomUUID(), word:"accurate", meaning:"정확한", example:"The report is accurate.", r:Math.random(), createdAt:Date.now()},
+      {id: crypto.randomUUID(), word:"beneficial", meaning:"유익한", example:"Exercise is beneficial.", r:Math.random(), createdAt:Date.now()},
+      {id: crypto.randomUUID(), word:"contribute", meaning:"기여하다", example:"They contributed to the project.", r:Math.random(), createdAt:Date.now()},
+    ];
+  }
+
+  function loadCards(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return defaultCards();
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr)) return defaultCards();
+      return arr.map(x => ({
+        id: x.id || crypto.randomUUID(),
+        word: (x.word ?? "").trim(),
+        meaning: (x.meaning ?? "").trim(),
+        example: (x.example ?? "").trim(),
+        r: typeof x.r === "number" ? x.r : Math.random(),
+        createdAt: typeof x.createdAt === "number" ? x.createdAt : Date.now()
+      })).filter(x => x.word && x.meaning);
+    }catch(e){
+      return defaultCards();
+    }
+  }
+  function saveCards(){ localStorage.setItem(LS_KEY, JSON.stringify(cards)); }
+
+  function loadSettings(){
+    try{
+      const raw = localStorage.getItem(LS_SET);
+      if(!raw) return { threshold: 0.20 };
+      const s = JSON.parse(raw);
+      return { threshold: clamp(Number(s.threshold ?? 0.20), 0.01, 0.9) };
+    }catch(e){
+      return { threshold: 0.20 };
+    }
+  }
+  function saveSettings(){ localStorage.setItem(LS_SET, JSON.stringify(settings)); }
+
+  function loadBest(){
+    try{
+      const raw = localStorage.getItem(LS_BEST);
+      if(!raw) return 0;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : 0;
+    }catch(e){ return 0; }
+  }
+  function saveBest(n){ localStorage.setItem(LS_BEST, String(n)); }
+
+  let cards = loadCards();
+  let settings = loadSettings();
+
+  /* Session (Flashcards) */
+  let mode = "flash";     // flash|test|game
+  let studyMode = "all";  // all|today
+  let session = [];
+  let idx = 0;
+  let flipped = false;
+
+  function computeTodaySet(){
+    const t = clamp(Number(settings.threshold), 0.01, 0.9);
+    return cards.filter(c => (c.r ?? 1) < t);
+  }
+  function poolBy(sel){
+    return (sel === "today") ? computeTodaySet() : cards;
+  }
+  function buildSession(){
+    const pool = (studyMode === "today") ? computeTodaySet() : cards;
+    session = pool.map(c => c.id);
+    if(session.length === 0 && cards.length > 0) session = cards.map(c => c.id);
+    shuffle(session);
+    idx = 0;
+    flipped = false;
+    renderCard();
+  }
+  function getCardById(id){ return cards.find(c => c.id === id); }
+  function currentCard(){
+    if(session.length === 0) return null;
+    return getCardById(session[idx]);
+  }
+
+  /* UI bindings */
+  const tabFlash = $("tabFlash"), tabTest = $("tabTest"), tabGame = $("tabGame");
+  const viewFlash = $("viewFlash"), viewTest = $("viewTest"), viewGame = $("viewGame");
+  const statusText = $("statusText");
+
+  function setMode(m){
+    mode = m;
+    [tabFlash, tabTest, tabGame].forEach(b => b.classList.remove("active"));
+    [viewFlash, viewTest, viewGame].forEach(v => v.style.display = "none");
+    if(m === "flash"){ tabFlash.classList.add("active"); viewFlash.style.display = ""; }
+    if(m === "test"){ tabTest.classList.add("active"); viewTest.style.display = ""; }
+    if(m === "game"){ tabGame.classList.add("active"); viewGame.style.display = ""; }
+    updateStatus();
+  }
+  tabFlash.onclick = () => setMode("flash");
+  tabTest.onclick = () => setMode("test");
+  tabGame.onclick = () => setMode("game");
+
+  /* Flash UI */
+  const cardEl = $("card");
+  const frontText = $("frontText");
+  const backText = $("backText");
+  const chipTag = $("chipTag");
+  const btnFlip = $("btnFlip");
+  const btnPrev = $("btnPrev");
+  const btnNext = $("btnNext");
+  const btnShuffle = $("btnShuffle");
+  const btnResetSession = $("btnResetSession");
+  const progBar = $("progBar");
+  const idxText = $("idxText");
+  const totalText = $("totalText");
+  const studyModeSel = $("studyMode");
+
+  studyModeSel.value = studyMode;
+  studyModeSel.onchange = () => { studyMode = studyModeSel.value; buildSession(); updateStatus(); };
+
+  function flip(){
+    flipped = !flipped;
+    cardEl.classList.toggle("flipped", flipped);
+    chipTag.textContent = flipped ? "MEANING" : "WORD";
+  }
+  function prev(){
+    if(session.length === 0) return;
+    idx = (idx - 1 + session.length) % session.length;
+    flipped = false;
+    renderCard();
+  }
+  function next(){
+    if(session.length === 0) return;
+    idx = (idx + 1) % session.length;
+    flipped = false;
+    renderCard();
+  }
+  function updateProgress(){
+    const total = session.length;
+    totalText.textContent = String(total);
+    idxText.textContent = total ? String(idx + 1) : "0";
+    const pct = total ? ((idx+1)/total)*100 : 0;
+    progBar.style.width = pct + "%";
+  }
+
+  function renderCard(){
+    const c = currentCard();
+    if(!c){
+      frontText.textContent = "단어 없음";
+      backText.innerHTML = `<div class="meaning">오른쪽에서 단어를 추가하거나 CSV 업로드</div>`;
+      cardEl.classList.remove("flipped");
+      flipped = false;
+      chipTag.textContent = "WORD";
+      updateProgress();
+      updateStatus();
+      return;
+    }
+
+    frontText.textContent = c.word;
+
+    // ✅ meaning / etc 분리 + "예문" -> "etc"
+    const back = `
+      <div class="meaning">${escapeHtml(c.meaning)}</div>
+      ${c.example ? `<div class="etc">etc: ${escapeHtml(c.example)}</div>` : ""}
+    `.trim();
+    backText.innerHTML = back;
+
+    cardEl.classList.remove("flipped");
+    flipped = false;
+    chipTag.textContent = "WORD";
+    updateProgress();
+    updateStatus();
+  }
+
+  cardEl.onclick = () => flip();
+  btnFlip.onclick = () => flip();
+  btnPrev.onclick = () => prev();
+  btnNext.onclick = () => next();
+  btnShuffle.onclick = () => { buildSession(); };
+  btnResetSession.onclick = () => { buildSession(); };
+
+  window.addEventListener("keydown", (e) => {
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+    if(tag === "input" || tag === "textarea" || tag === "select") return;
+    if(e.code === "Space"){ e.preventDefault(); if(mode === "flash") flip(); }
+    if(e.code === "ArrowRight"){ e.preventDefault(); if(mode === "flash") next(); }
+    if(e.code === "ArrowLeft"){ e.preventDefault(); if(mode === "flash") prev(); }
+  });
+
+  function updateStatus(){
+    const todayN = computeTodaySet().length;
+    const labelMode = mode === "flash" ? "카드" : (mode === "test" ? "테스트" : "게임");
+    statusText.textContent = `총 ${cards.length} · 오늘 ${todayN} · ${labelMode}`;
+  }
+
+  /* Manage UI */
+  const threshold = $("threshold");
+  const btnReRoll = $("btnReRoll");
+  const btnAdd = $("btnAdd");
+  const btnAddAndNext = $("btnAddAndNext");
+  const btnClearAll = $("btnClearAll");
+  const inWord = $("inWord");
+  const inMeaning = $("inMeaning");
+  const inExample = $("inExample");
+  const listEl = $("list");
+  const csvFile = $("csvFile");
+  const btnExport = $("btnExport");
+
+  threshold.value = String(settings.threshold);
+  threshold.onchange = () => {
+    settings.threshold = clamp(Number(threshold.value || 0.2), 0.01, 0.9);
+    threshold.value = String(settings.threshold);
+    saveSettings();
+    updateStatus();
+  };
+
+  btnReRoll.onclick = () => {
+    cards = cards.map(c => ({...c, r: Math.random()}));
+    saveCards();
+    renderList();
+    updateStatus();
+    if(studyMode === "today") buildSession();
+    if($("gamePool").value === "today") renderBest();
+  };
+
+  function addCard(word, meaning, example){
+    const w = (word || "").trim();
+    const m = (meaning || "").trim();
+    const ex = (example || "").trim();
+    if(!w || !m) return false;
+
+    const exists = cards.find(c => c.word.toLowerCase() === w.toLowerCase());
+    if(exists){
+      exists.meaning = m || exists.meaning;
+      if(ex) exists.example = ex;
+      saveCards();
+      return "updated";
+    }
+
+    cards.unshift({
+      id: crypto.randomUUID(),
+      word: w,
+      meaning: m,
+      example: ex,
+      r: Math.random(),
+      createdAt: Date.now()
+    });
+    saveCards();
+    return "added";
+  }
+
+  btnAdd.onclick = () => {
+    const res = addCard(inWord.value, inMeaning.value, inExample.value);
+    if(!res){ alert("단어/뜻은 필수야!"); return; }
+    inWord.value = ""; inMeaning.value = ""; inExample.value = "";
+    renderList(); updateStatus();
+  };
+
+  btnAddAndNext.onclick = () => {
+    const res = addCard(inWord.value, inMeaning.value, inExample.value);
+    if(!res){ alert("단어/뜻은 필수야!"); return; }
+    inWord.value = ""; inMeaning.value = ""; inExample.value = "";
+    renderList(); updateStatus();
+    buildSession();
+    setMode("flash");
+    renderCard();
+  };
+
+  btnClearAll.onclick = () => {
+    const ok = confirm("정말 전체 단어를 삭제할까? (되돌릴 수 없음)");
+    if(!ok) return;
+    cards = [];
+    saveCards();
+    buildSession();
+    renderList();
+    updateStatus();
+  };
+
+  function removeCard(id){
+    cards = cards.filter(c => c.id !== id);
+    saveCards();
+    buildSession();
+    renderList();
+    updateStatus();
+  }
+
+  function renderList(){
+    listEl.innerHTML = "";
+    const recent = cards.slice(0, 60);
+    if(recent.length === 0){
+      listEl.innerHTML = `<div class="small">단어가 없어. 위에서 추가하거나 CSV 업로드!</div>`;
+      return;
+    }
+    for(const c of recent){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="w">${escapeHtml(c.word)}</div>
+        <div class="m">${escapeHtml(c.meaning)}${c.example ? `<br/><span class="mono" style="opacity:.85">etc) ${escapeHtml(c.example)}</span>` : ""}</div>
+        <div class="x"><button class="btn sm danger">삭제</button></div>
+      `;
+      div.querySelector("button").onclick = () => removeCard(c.id);
+      listEl.appendChild(div);
+    }
+  }
+
+  /* CSV Import */
+  csvFile.onchange = async () => {
+    const file = csvFile.files && csvFile.files[0];
+    if(!file) return;
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if(rows.length === 0){
+      alert("CSV를 읽지 못했어. 형식: word,meaning,example");
+      return;
+    }
+    const first = rows[0].map(x => (x||"").toLowerCase().trim());
+    let start = 0;
+    const hasHeader = first.includes("word") && (first.includes("meaning") || first.includes("definition"));
+    if(hasHeader) start = 1;
+
+    let added = 0, updated = 0, skipped = 0;
+    for(let i=start;i<rows.length;i++){
+      const [w, m, ex] = rows[i];
+      const res = addCard(w, m, ex);
+      if(res === false) skipped++;
+      else if(res === "added") added++;
+      else updated++;
+    }
+    csvFile.value = "";
+    renderList(); updateStatus(); buildSession();
+    alert(`CSV 완료\n추가: ${added}\n업데이트: ${updated}\n스킵: ${skipped}`);
+  };
+
+  /* CSV Export */
+  btnExport.onclick = () => {
+    const header = ["word","meaning","example"];
+    const lines = [header.join(",")];
+    for(const c of cards){
+      lines.push([escapeCSV(c.word), escapeCSV(c.meaning), escapeCSV(c.example)].join(","));
+    }
+    const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "toeic_words.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  function parseCSV(text){
+    const out = [];
+    let row = [];
+    let cur = "";
+    let inQ = false;
+    for(let i=0;i<text.length;i++){
+      const ch = text[i];
+      const next = text[i+1];
+
+      if(inQ){
+        if(ch === '"' && next === '"'){ cur += '"'; i++; continue; }
+        if(ch === '"'){ inQ = false; continue; }
+        cur += ch;
+      }else{
+        if(ch === '"'){ inQ = true; continue; }
+        if(ch === ","){ row.push(cur); cur=""; continue; }
+        if(ch === "\n"){
+          row.push(cur); cur="";
+          if(row.length > 1 || (row.length === 1 && row[0].trim() !== "")) out.push(row);
+          row = [];
+          continue;
+        }
+        if(ch === "\r"){ continue; }
+        cur += ch;
+      }
+    }
+    row.push(cur);
+    if(row.length > 1 || (row.length === 1 && row[0].trim() !== "")) out.push(row);
+    return out.map(r => [r[0] ?? "", r[1] ?? "", r[2] ?? ""]);
+  }
+
+  /* Test Mode */
+  const btnStartTest = $("btnStartTest");
+  const testArea = $("testArea");
+  const testCountSel = $("testCount");
+  const testPoolSel = $("testPool");
+  const toast = $("toast");
+  let toastT = null;
+
+  function toastMsg(msg){
+    toast.textContent = msg;
+    toast.style.display = "block";
+    clearTimeout(toastT);
+    toastT = setTimeout(() => toast.style.display = "none", 1300);
+  }
+
+  let test = null;
+
+  btnStartTest.onclick = () => {
+    const pool = poolBy(testPoolSel.value);
+    if(pool.length < 4){
+      alert("테스트는 최소 4개 단어가 필요해!");
+      return;
+    }
+    const n = Math.min(Number(testCountSel.value), pool.length);
+    const ids = shuffle(pool.map(c => c.id)).slice(0, n);
+    test = { pool: pool.map(c => c.id), qIds: ids, qi: 0, score: 0 };
+    renderQuestion();
+  };
+
+  function renderQuestion(){
+    if(!test) return;
+    const total = test.qIds.length;
+    const qid = test.qIds[test.qi];
+    const q = getCardById(qid);
+    if(!q){
+      test.qi++;
+      if(test.qi >= total) return renderTestDone();
+      return renderQuestion();
+    }
+
+    const poolIds = test.pool.filter(id => id !== qid);
+    const distractIds = shuffle([...poolIds]).slice(0, 3);
+    const choices = shuffle([
+      {meaning: q.meaning, correct: true},
+      ...distractIds.map(id => ({meaning: (getCardById(id)?.meaning ?? ""), correct:false}))
+    ]);
+
+    testArea.innerHTML = `
+      <div class="small" style="margin-bottom:8px">문항 ${test.qi+1}/${total} · 점수 ${test.score}</div>
+      <div class="quizq">${escapeHtml(q.word)}</div>
+      <div id="choices" style="display:flex; flex-direction:column; gap:8px"></div>
+      <div class="small" style="margin-top:10px">선택하면 바로 다음 문제로 넘어가</div>
+    `;
+    const choicesEl = $("choices");
+
+    for(const ch of choices){
+      const div = document.createElement("div");
+      div.className = "choice";
+      div.innerHTML = `<div style="font-weight:900; color:#111827">•</div><div style="flex:1">${escapeHtml(ch.meaning)}</div>`;
+      div.onclick = () => {
+        const all = choicesEl.querySelectorAll(".choice");
+        all.forEach(x => x.onclick = null);
+
+        if(ch.correct){
+          div.classList.add("correct");
+          test.score += 1;
+          toastMsg("✅ 정답");
+        }else{
+          div.classList.add("wrong");
+          all.forEach(node => {
+            if(node.textContent && node.textContent.includes(q.meaning)) node.classList.add("correct");
+          });
+          toastMsg("❌ 오답");
+        }
+
+        setTimeout(() => {
+          test.qi += 1;
+          if(test.qi >= total) renderTestDone();
+          else renderQuestion();
+        }, 520);
+      };
+      choicesEl.appendChild(div);
+    }
+  }
+
+  function renderTestDone(){
+    const total = test.qIds.length;
+    const score = test.score;
+    const pct = Math.round((score/total)*100);
+    testArea.innerHTML = `
+      <div class="quizq">완료 🎉</div>
+      <div class="small">점수 <b>${score}</b> / ${total} (${pct}%)</div>
+      <div class="divider"></div>
+      <div class="row">
+        <button class="btn good" id="btnRestartTest">다시</button>
+        <button class="btn" id="btnBackFlash">카드로</button>
+      </div>
+    `;
+    $("btnRestartTest").onclick = () => btnStartTest.onclick();
+    $("btnBackFlash").onclick = () => setMode("flash");
+  }
+
+  /* Game Mode */
+  const gameModeSel = $("gameMode");
+  const gamePoolSel = $("gamePool");
+  const btnStartGame = $("btnStartGame");
+  const gameArea = $("gameArea");
+  const gToast = $("gToast");
+  const gScore = $("gScore");
+  const gCombo = $("gCombo");
+  const gTime = $("gTime");
+  const gBest = $("gBest");
+
+  let gToastT = null;
+  function gToastMsg(msg){
+    gToast.textContent = msg;
+    gToast.style.display = "block";
+    clearTimeout(gToastT);
+    gToastT = setTimeout(() => gToast.style.display = "none", 1200);
+  }
+
+  function renderBest(){
+    const best = loadBest();
+    gBest.textContent = String(best);
+  }
+  renderBest();
+
+  // Game state
+  let game = null;
+  let timer = null;
+
+  function resetGameStats(){
+    gScore.textContent = "0";
+    gCombo.textContent = "0";
+    gTime.textContent = "—";
+  }
+
+  function stopTimer(){
+    if(timer){ clearInterval(timer); timer = null; }
+  }
+
+  btnStartGame.onclick = () => {
+    const pool = poolBy(gamePoolSel.value);
+    if(pool.length < 4){
+      alert("게임은 최소 4개 단어가 필요해!");
+      return;
+    }
+    stopTimer();
+    resetGameStats();
+
+    const mode = gameModeSel.value;
+    if(mode === "match") startMatch(pool);
+    else startTimeAttack(pool);
+  };
+
+  /* Match Game: pick 6 pairs => 12 cards */
+  function startMatch(pool){
+    const pairs = Math.min(6, Math.floor(pool.length)); // up to 6 pairs
+    const pick = shuffle(pool.slice()).slice(0, pairs);
+
+    const deck = [];
+    for(const c of pick){
+      deck.push({type:"w", key:c.id, text:c.word});
+      deck.push({type:"m", key:c.id, text:c.meaning});
+    }
+    shuffle(deck);
+
+    game = {
+      type:"match",
+      score:0,
+      combo:0,
+      matched:new Set(),
+      sel:null,
+      deck
+    };
+
+    gameArea.innerHTML = `
+      <div class="small" style="margin-bottom:10px">단어와 뜻을 짝지어라 (총 ${pairs}쌍)</div>
+      <div class="gameGrid" id="gameGrid"></div>
+    `;
+    const grid = $("gameGrid");
+
+    deck.forEach((card, i) => {
+      const div = document.createElement("div");
+      div.className = "gcard";
+      div.dataset.i = String(i);
+      div.textContent = card.text;
+      div.onclick = () => onMatchPick(i);
+      grid.appendChild(div);
+    });
+
+    updateGameStats();
+    gTime.textContent = "∞";
+    gToastMsg("매칭 시작!");
+  }
+
+  function onMatchPick(i){
+    if(!game || game.type !== "match") return;
+    const card = game.deck[i];
+    if(game.matched.has(card.key)) return;
+
+    const el = document.querySelector(`.gcard[data-i="${i}"]`);
+    if(!el) return;
+
+    // selecting
+    if(game.sel === null){
+      game.sel = i;
+      el.classList.add("sel");
+      return;
+    }
+    if(game.sel === i) return;
+
+    const prevI = game.sel;
+    const prev = game.deck[prevI];
+    const prevEl = document.querySelector(`.gcard[data-i="${prevI}"]`);
+    // must be different type (word vs meaning) and same key
+    const ok = (prev.key === card.key) && (prev.type !== card.type);
+
+    if(ok){
+      // matched
+      game.matched.add(card.key);
+      el.classList.remove("sel");
+      prevEl?.classList.remove("sel");
+      el.classList.add("matched");
+      prevEl?.classList.add("matched");
+
+      game.combo += 1;
+      const gain = 10 + Math.min(20, game.combo * 2);
+      game.score += gain;
+      gToastMsg(`✅ +${gain} (콤보 ${game.combo})`);
+    }else{
+      // wrong
+      el.classList.add("sel");
+      setTimeout(() => {
+        el.classList.remove("sel");
+        prevEl?.classList.remove("sel");
+      }, 420);
+
+      game.combo = 0;
+      game.score = Math.max(0, game.score - 3);
+      gToastMsg("❌ 틀림");
+    }
+
+    game.sel = null;
+    updateGameStats();
+
+    // done?
+    const totalPairs = game.deck.length / 2;
+    if(game.matched.size === totalPairs){
+      finishGame();
+    }
+  }
+
+  /* Time Attack: 60s multiple choice, combo scoring */
+  function startTimeAttack(pool){
+    game = {
+      type:"time",
+      pool: pool.slice(),
+      score:0,
+      combo:0,
+      timeLeft:60,
+      current:null
+    };
+
+    gameArea.innerHTML = `
+      <div class="small" style="margin-bottom:10px">60초 동안 최대한 많이 맞춰라</div>
+      <div id="taArea"></div>
+    `;
+
+    gTime.textContent = "60";
+    updateGameStats();
+    nextTimeQuestion();
+
+    timer = setInterval(() => {
+      if(!game || game.type !== "time") return;
+      game.timeLeft -= 1;
+      gTime.textContent = String(game.timeLeft);
+      if(game.timeLeft <= 0){
+        stopTimer();
+        finishGame();
+      }
+    }, 1000);
+
+    gToastMsg("타임어택 시작!");
+  }
+
+  function nextTimeQuestion(){
+    if(!game || game.type !== "time") return;
+    const pool = game.pool;
+    if(pool.length < 4) return finishGame();
+
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    const distract = shuffle(pool.filter(x => x.id !== q.id)).slice(0,3);
+    const choices = shuffle([
+      {text:q.meaning, correct:true},
+      ...distract.map(x => ({text:x.meaning, correct:false}))
+    ]);
+
+    game.current = { q, choices };
+
+    const taArea = $("taArea");
+    taArea.innerHTML = `
+      <div class="quizq">${escapeHtml(q.word)}</div>
+      <div id="taChoices" style="display:flex; flex-direction:column; gap:8px"></div>
+      <div class="small" style="margin-top:10px">맞히면 콤보가 쌓이고 점수가 더 큼</div>
+    `;
+    const taChoices = $("taChoices");
+    for(const ch of choices){
+      const div = document.createElement("div");
+      div.className = "choice";
+      div.innerHTML = `<div style="font-weight:900; color:#111827">•</div><div style="flex:1">${escapeHtml(ch.text)}</div>`;
+      div.onclick = () => {
+        // lock
+        taChoices.querySelectorAll(".choice").forEach(x => x.onclick = null);
+
+        if(ch.correct){
+          div.classList.add("correct");
+          game.combo += 1;
+          const gain = 8 + Math.min(22, game.combo * 2);
+          game.score += gain;
+          gToastMsg(`✅ +${gain} (콤보 ${game.combo})`);
+        }else{
+          div.classList.add("wrong");
+          // highlight correct
+          taChoices.querySelectorAll(".choice").forEach(node => {
+            if(node.textContent && node.textContent.includes(q.meaning)) node.classList.add("correct");
+          });
+          game.combo = 0;
+          game.score = Math.max(0, game.score - 2);
+          gToastMsg("❌ 오답");
+        }
+        updateGameStats();
+        setTimeout(() => {
+          if(game && game.type === "time" && game.timeLeft > 0) nextTimeQuestion();
+        }, 420);
+      };
+      taChoices.appendChild(div);
+    }
+  }
+
+  function updateGameStats(){
+    if(!game){ gScore.textContent = "0"; gCombo.textContent="0"; return; }
+    gScore.textContent = String(game.score);
+    gCombo.textContent = String(game.combo);
+  }
+
+  function finishGame(){
+    if(!game) return;
+    stopTimer();
+    const score = game.score;
+
+    const best = loadBest();
+    if(score > best){
+      saveBest(score);
+      renderBest();
+    }
+
+    const msg = game.type === "match"
+      ? `매칭 완료! 점수 ${score}`
+      : `타임어택 종료! 점수 ${score}`;
+
+    gameArea.innerHTML = `
+      <div class="quizq">게임 종료 🎮</div>
+      <div class="small">${escapeHtml(msg)}</div>
+      <div class="divider"></div>
+      <div class="row">
+        <button class="btn primary" id="btnReplay">한 판 더</button>
+        <button class="btn" id="btnGoCards">카드로</button>
+      </div>
+    `;
+
+    $("btnReplay").onclick = () => btnStartGame.onclick();
+    $("btnGoCards").onclick = () => setMode("flash");
+    gToastMsg("끝!");
+    game = null;
+  }
+
+  /* Init */
+  function init(){
+    renderList();
+    updateStatus();
+    buildSession();
+    renderCard();
+    setMode("flash");
+    resetGameStats();
+    renderBest();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
